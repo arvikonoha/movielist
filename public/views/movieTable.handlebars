@@ -1,0 +1,154 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
+
+  .webix_view {
+    font-family: 'Poppins', serif;
+  }
+
+  .webix_hcell {
+    border: .1px solid #00000013 !important;
+    text-align: center;
+    font-family: 'Poppins', serif;
+    font-weight: bold;
+  }
+
+  .webix_template h2,
+  .webix_template p {
+    margin: 8px;
+  }
+</style>
+
+<script>
+  webix.ui({
+    rows: [
+      {
+        view: 'toolbar', cols: [
+          {
+            template: "<h2>MovieList</h2><p>Arbitrary list of movies from ImDB</p>",
+            css: "templateHead",
+            borderless: true,
+            autoheight: true,
+            margin: 4
+          },
+          { view: 'button', value: 'Add new movie', popup: 'addmovie', width: 196 }]
+      }
+      ,
+      { view: "resizer" },
+      {
+        view: "datatable",
+        scroll: false,
+        fillspace: true,
+        datafetch: 10,
+        editable: true,
+        editaction: "dblclick",
+        columns: [
+          { id: "id", header: "Id." },
+          { id: "imageURL", header: "image", template: `<img src=\"#imageURL#\">` },
+          { id: "title", editor: "text", fillspace: true, header: ["Title", { content: "serverFilter", filterPlaceholder: true }] },
+          { id: "released", width: 120, header: "Released", sort: "server", template: function (obj) { return new Date(obj.released).toLocaleDateString() } },
+          { id: "rating", editor: "select", header: ["Rating", { content: "serverSelectFilter", options: "/movieList/options/rating" }], sort: "server", options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+          { id: "genre", editor: "text", header: ["Genre", { content: "serverSelectFilter", options: "/movieList/options/genre" }] },
+          { id: "language", editor: "text", header: ["Language", { content: "serverSelectFilter", options: "/movieList/options/language" }] },
+          { id: "industry", editor: "text", width: 164, header: ["Industry", { content: "serverSelectFilter", options: "/movieList/options/industry" }] }
+        ],
+        url: "/movieList",
+        pager: "moviePager",
+        on: {
+          onDataUpdate: function (id, data, old) {
+
+            for (let attribute in data)
+              if (old[attribute] !== data[attribute]) {
+                fetch("/movieList", { method: "PUT", headers: { 'Content-Type': "application/json" }, body: JSON.stringify({ attribute, id, value: data[attribute] }) })
+                  .then(data => data.json())
+                  .then(data => {
+                    webix.message(data.message)
+                    $$("addmovie").hide()
+                  })
+                  .catch(error => {
+                    webix.message("something went wrong :/")
+                    console.log(error)
+                  })
+              }
+          }
+        }
+      }, {
+        view: "pager",
+        id: "moviePager",
+        size: 10,
+        group: 5,
+        template: "{common.first()}{common.prev()}{common.pages()}{common.next()}{common.last()}"
+      }
+    ]
+  })
+
+  webix.ui({
+    view: 'popup',
+    id: 'addmovie',
+    body: {
+      view: 'form',
+      id: 'add_movie',
+      elements: [
+        { view: 'text', label: 'Title', name: 'title' },
+        { view: 'datepicker', label: 'Released', name: 'released' },
+        { view: 'select', label: 'Genre', name: 'genre', options: ["action", "adventure", "documentory", "western", "drama", "thriller", "history"] },
+        { view: 'text', type: "number", label: 'Rating', name: 'rating' },
+        { view: 'select', label: 'Language', name: 'language', options: ["english", "kannada", "hindi", "malayalam", "korean", "spanish", "japanese"] },
+        { view: 'text', label: 'Industry', name: 'industry' },
+        {
+          view: "uploader", upload: "/movieList",
+          id: "files", name: "movieImage",
+          value: "Add documents",
+          link: "doclist",
+          autosend: false //!important
+        },
+        {
+          view: "list", scroll: false, id: "doclist", type: "uploader"
+        },
+        { view: "button", value: "Submit", label: "Save", css: "webix_primary", click: save_form }
+      ],
+      rules: {
+        "title": webix.rules.isNotEmpty,
+        "released": webix.rules.isNotEmpty,
+        "genre": webix.rules.isNotEmpty,
+        "rating": function (value) {
+          return value >= 1 && value <= 10
+        },
+        "language": webix.rules.isNotEmpty,
+        "industry": webix.rules.isNotEmpty,
+      }
+    }
+  })
+
+
+  function save_form() {
+
+    if ($$("add_movie").validate()) {
+      const formValues = $$("add_movie").getValues()
+
+      formValues.released = (new Date(formValues.released)).toISOString().split('T')[0]
+      delete formValues.files
+
+      const files = $$("files").files.data.pull
+
+      for (let fileID in files)
+        formValues.movieImage = files[fileID].file
+
+      const formData = new FormData()
+
+      for (let key in formValues)
+        formData.append(key, formValues[key])
+
+      fetch("/movieList", { method: "POST", body: formData })
+        .then(data => data.json())
+        .then(data => {
+          webix.message(data.message)
+          $$("addmovie").hide()
+        })
+        .catch(error => {
+          webix.message("something went wrong :/")
+          console.log(error)
+        })
+    }
+  }
+
+</script>
