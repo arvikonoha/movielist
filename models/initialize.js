@@ -1,8 +1,8 @@
 const { Sequelize, DataTypes } = require("sequelize")
-const { host ,password,username,database} = require("../config/dbConfiguration")
+// const { host ,password,username,database} = require("../config/dbConfiguration")
 const Movie = require("./Movie")
 
-const sequalize = new Sequelize({host,password,database,username,dialect:'mysql'})
+const sequalize = new Sequelize('sqlite::memory:')
 
 sequalize.authenticate()
 .then(() => {

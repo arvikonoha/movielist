@@ -12,7 +12,7 @@ const route = require("express").Router();
 route.post("/", upload.single("movieImage"), async (req, res) => {
   try {
     let { title, released, rating, genre, language, industry } = req.body;
-    const imageURL = "uploads" + "/" + req.file.filename;
+    const imageURL = req.file ? "uploads" + "/" + req.file.filename : "";
 
     const newMovie = await makeNewMovie({
       title,
