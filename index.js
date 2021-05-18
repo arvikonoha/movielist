@@ -2,6 +2,7 @@ const express = require("express")
 const path = require("path")
 const app = express()
 var exphbs  = require('express-handlebars');
+require('dotenv').config()
 
 app.use(express.json())
 app.use(express.urlencoded({extended:true}))
@@ -14,6 +15,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/webix', express.static(__dirname + '/node_modules/webix/'));
 
 app.use('/movieList',require('./controllers/movieList'))
+
+app.use('/images',require('./controllers/images'))
 
 app.get("/",(req,res) => {
   res.render("movieTable")

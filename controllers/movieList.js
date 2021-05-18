@@ -1,5 +1,4 @@
 const upload = require("../libraries/multerInit");
-const path = require("path");
 const {
   makeNewMovie,
   getMoviePage,
@@ -7,12 +6,18 @@ const {
   setMovieAttribte,
 } = require("../services/movieService");
 
+const {uploadImageToBucket} = require("../services/imageService")
+
 const route = require("express").Router();
 
 route.post("/", upload.single("movieImage"), async (req, res) => {
   try {
-    let { title, released, rating, genre, language, industry } = req.body;
-    const imageURL = req.file ? "uploads" + "/" + req.file.filename : "";
+    let { title, released, rating, genre, language, industry,imagePath } = req.body;
+    
+    if(imagePath){
+      const fileData = await uploadImageToBucket({filePath:imagePath})
+      imageURL = fileData.Key
+    }
 
     const newMovie = await makeNewMovie({
       title,
@@ -66,7 +71,7 @@ route.put("/", async (req, res) => {
     const row = await setMovieAttribte({ id, attribute, value });
     return res.json({
       status: "Success",
-      message: `${row.length} movie updated successfully`,
+      message: `${row.length} movie(s) updated successfully`,
     });
   } catch (error) {
     console.log(error);

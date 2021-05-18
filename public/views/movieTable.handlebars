@@ -12,6 +12,10 @@
     font-weight: bold;
   }
 
+  .webix_list_item{
+    height: 64px !important;
+  }
+
   .webix_template h2,
   .webix_template p {
     margin: 8px;
@@ -19,6 +23,8 @@
 </style>
 
 <script>
+  let imagePath = ""
+
   webix.ui({
     rows: [
       {
@@ -30,7 +36,7 @@
             autoheight: true,
             margin: 4
           },
-          { view: 'button', value: 'Add new movie', popup: 'addmovie', width: 196 }]
+          { view: 'button', value: 'Add new movie',click:function(){$$("addmovie").show()}, width: 196 }]
       }
       ,
       { view: "resizer" },
@@ -43,7 +49,7 @@
         editaction: "dblclick",
         columns: [
           { id: "id", header: "Id." },
-          { id: "imageURL", header: "image", template: `<img src=\"#imageURL#\">` },
+          { id: "imageURL", header: "image", template: `<img width="48px" style="object-fit:cover;" src=\"#imageURL#\">` },
           { id: "title", editor: "text", fillspace: true, header: ["Title", { content: "serverFilter", filterPlaceholder: true }] },
           { id: "released", width: 120, header: "Released", sort: "server", template: function (obj) { return new Date(obj.released).toLocaleDateString() } },
           { id: "rating", editor: "select", header: ["Rating", { content: "serverSelectFilter", options: "/movieList/options/rating" }], sort: "server", options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
@@ -82,11 +88,23 @@
   })
 
   webix.ui({
-    view: 'popup',
+    view: 'window',
     id: 'addmovie',
+    width: 500,
+    css:{"left": "auto !important", "right": "0 !important", "position": "fixed !important", "height": "100% !important;", "overflow-y": "auto !important"},
+    head:{
+        view:"toolbar", elements:[
+          { view:"label", id: "specHead", label:"Add Movie", css: {"font-weight": "bold"}, align:"center" },
+          { view:"icon", icon:"wxi-close", click:function() {
+              $$("addmovie").hide()
+            }
+          }
+        ]
+    },
     body: {
       view: 'form',
       id: 'add_movie',
+      
       elements: [
         { view: 'text', label: 'Title', name: 'title' },
         { view: 'datepicker', label: 'Released', name: 'released' },
@@ -95,16 +113,30 @@
         { view: 'select', label: 'Language', name: 'language', options: ["english", "kannada", "hindi", "malayalam", "korean", "spanish", "japanese"] },
         { view: 'text', label: 'Industry', name: 'industry' },
         {
-          view: "uploader", upload: "/movieList",
+          view: "uploader", upload: "/images",
           id: "files", name: "movieImage",
           value: "Add documents",
           link: "doclist",
-          autosend: false //!important
+          multiple:false,
+          on:{
+            onFileUpload:function(file){
+              console.log(file)
+              imagePath = "public/uploads/" + file.name
+            }
+          },
+          autosend: true//!important
         },
         {
-          view: "list", scroll: false, id: "doclist", type: "uploader"
+          view: "list", 
+          id: "doclist", 
+          type: "uploader",
+          height:72,
+          scroll:false,
+          template: function(data){
+            return "<div style='display: flex;align-items:center;'><img style='width:64px;height:64px;object-fit:cover;' src='uploads/"+data.name+"'/><p style='margin:16px;'>"+data.name+"</p></div>"
+          }
         },
-        { view: "button", value: "Submit", label: "Save", css: "webix_primary", click: save_form }
+        { view: "button", value: "Submit", label: "Save", css: "webix_primary", click: save_form },
       ],
       rules: {
         "title": webix.rules.isNotEmpty,
@@ -128,10 +160,8 @@
       formValues.released = (new Date(formValues.released)).toISOString().split('T')[0]
       delete formValues.files
 
-      const files = $$("files").files.data.pull
-
-      for (let fileID in files)
-        formValues.movieImage = files[fileID].file
+      if(imagePath)
+        formValues.imagePath = imagePath
 
       const formData = new FormData()
 
@@ -142,6 +172,7 @@
         .then(data => data.json())
         .then(data => {
           webix.message(data.message)
+          imagePath = ""
           $$("addmovie").hide()
         })
         .catch(error => {
