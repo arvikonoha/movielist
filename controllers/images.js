@@ -1,8 +1,23 @@
 const { downloadImage, updateImage } = require("../services/imageService");
 const upload = require("../libraries/multerInit");
 const formidable = require("formidable")
+const winston = require("winston")
 const path = require("path")
 const fs = require("fs")
+
+const newrelicFormatter = require('@newrelic/winston-enricher')
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.label({label: 'movielist'}),
+    newrelicFormatter()
+  ),
+  transports:[
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'E:/NRLogs/new_relic.log'})
+  ]
+});
 
 const route = require("express").Router();
 
@@ -24,11 +39,12 @@ route.post("/",(req,res) => {
 
 route.get("/:imageName",async (req,res) => {
   try {
+    logger.info("Get an Image")
     let {imageName} = req.params
     const imageStream = await downloadImage({Key:"images/"+imageName})
     imageStream.pipe(res)
   } catch (error) {
-    console.log(error)
+    logger.info(error)
   }
 })
 
@@ -42,7 +58,7 @@ route.put("/",upload.single("movieImage"), (req,res) => {
     });
   })
   .catch(error => {
-    console.log(error);
+    logger.info(error);
   })
 
 })
